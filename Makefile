@@ -9,7 +9,7 @@ include $(BUILD_DIR)/Makefile.rules
 %.o: %.f
 	$(FC) $(F77FLAGS) $(FCINCLUDE) -c  $<
 
-VPATH = ./:$(BUILD_DIR):$(RRTMGP_ROOT)/extensions
+VPATH = ./:$(BUILD_DIR):$(RRTMGP_ROOT)/extensions::$(RRTMGP_ROOT)/test/util/src/io
 
 #
 # RRTMGP library, module files
@@ -21,7 +21,7 @@ FCINCLUDE += -I$(BUILD_DIR)
 #
 # Extra sources -- extensions to RRTMGP classes, shared infrastructure, local sources
 #
-ADDITIONS = mo_rfmip_io.o
+ADDITIONS = mo_rfmip_io.o mo_load_coefficients.o
 
 F77FLAGS += -O2
 
