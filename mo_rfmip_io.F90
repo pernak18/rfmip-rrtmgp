@@ -84,6 +84,7 @@ contains
     ! ---------------------------
     integer :: ncid
     integer :: b, nblocks
+    real(wp), dimension(:,:  ), allocatable :: temp2d 
     real(wp), dimension(:,:,:), allocatable :: temp3d 
     ! ---------------------------
     if(any([ncol_l, nlay_l, nexp_l]  == 0)) call stop_on_err("read_and_block_pt: Haven't read problem size yet.")
@@ -102,24 +103,24 @@ contains
     !
     ! Read p, T data; reshape to suit RRTMGP dimensions
     !
-    temp3d = reshape(read_field(ncid, "pres_layer", nlay_l,   ncol_l, nexp_l), &
+    temp3d = reshape(spread(read_field(ncid, "pres_layer", nlay_l,   ncol_l), dim = 3, ncopies = nexp_l), &
                      shape = [nlay_l, blocksize, nblocks])
     do b = 1, nblocks
       p_lay(:,:,b) = transpose(temp3d(:,:,b))
     end do
-    temp3d = reshape(read_field(ncid, "temp_layer", nlay_l,   ncol_l, nexp_l), &
+    temp3d = reshape(       read_field(ncid, "temp_layer", nlay_l,   ncol_l, nexp_l), &
                      shape = [nlay_l, blocksize, nblocks])
     do b = 1, nblocks
       t_lay(:,:,b) = transpose(temp3d(:,:,b))
     end do
                     
     deallocate(temp3d) 
-    temp3d = reshape(read_field(ncid, "pres_level", nlay_l+1, ncol_l, nexp_l), &
+    temp3d = reshape(spread(read_field(ncid, "pres_level", nlay_l+1, ncol_l),  dim = 3, ncopies = nexp_l), &
                     shape = [nlay_l+1, blocksize, nblocks])
     do b = 1, nblocks
       p_lev(:,:,b) = transpose(temp3d(:,:,b))
     end do
-    temp3d = reshape(read_field(ncid, "temp_level", nlay_l+1, ncol_l, nexp_l), &
+    temp3d = reshape(       read_field(ncid, "temp_level", nlay_l+1, ncol_l, nexp_l), &
                     shape = [nlay_l+1, blocksize, nblocks])
     do b = 1, nblocks
       t_lev(:,:,b) = transpose(temp3d(:,:,b))
@@ -260,7 +261,6 @@ contains
     !
     do g = 1, size(gas_names)
       gas_name_in_file = trim(lower_case(gas_names(g)))
-      print *, trim(gas_name_in_file) 
       if(gas_name_in_file == 'h2o' .or. gas_name_in_file == 'o3') cycle
       !
       ! Use a mapping between chemical formula and name if it exists

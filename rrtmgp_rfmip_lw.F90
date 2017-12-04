@@ -64,36 +64,48 @@ program rrtmgp_rfmip_lw
   !
   call read_kdist_gas_names(k_dist_file, kdist_gas_names) 
   !
-  ! Need to provide variants i.e. using equivalent concentrations
+  ! Here could provide variants i.e. using equivalent concentrations
   !
   gases_to_use = kdist_gas_names
   print *, "Radiation calculation uses gases " 
   print *, "  ", [(trim(gases_to_use(b)) // " ", b = 1, size(gases_to_use))]
   
-  ! 
-  ! Read the gas concentrations 
-  !
-  call read_and_block_gases_ty(fileName, block_size, gases_to_use, gas_conc_array)
   !
   ! Allocation on assignment within reading routines
   !
   call read_and_block_pt(   fileName, block_size, p_lay, p_lev, t_lay, t_lev)
   top_at_1 = p_lay(1, 1, 1) < p_lay(1, nlay, 1)
+  ! 
+  ! Read the gas concentrations 
+  !
+  call read_and_block_gases_ty(fileName, block_size, gases_to_use, gas_conc_array)
+
   call read_and_block_lw_bc(fileName, block_size, sfc_emis, sfc_t)
 
   ! Read k-distribution 
   !
   call load_and_init(k_dist, trim(k_dist_file), gas_conc_array(1))
-  if(k_dist%is_internal_source_present()) &
+  if(.not. k_dist%is_internal_source_present()) &
     stop "rrtmgp_rfmip_lw: k-distribution file isn't LW"
   ngpt = k_dist%get_ngpt()
-
-  allocate(flux_up(    block_size, nlay, nblocks), &
-           flux_dn(    block_size, nlay, nblocks))
-  allocate(lay_src(    block_size, nlay, ngpt), &
-           lev_src_inc(block_size, nlay, ngpt), &
-           lev_src_dec(block_size, nlay, ngpt), &
-           sfc_src(    block_size,       ngpt))
+  
+  !
+  ! RRTMGP won't run with pressure less than its minimum. The top level in the RFMIP file 
+  !   is set to 10^-3 Pa. Here we pretend the layer is just a bit less deep. 
+  !
+  if(top_at_1) then 
+    p_lev(:,1,:) = k_dist%get_press_ref_min() + epsilon(k_dist%get_press_ref_min()) 
+  else 
+    p_lev(:,nlay+1,:) & 
+                 = k_dist%get_press_ref_min() + epsilon(k_dist%get_press_ref_min()) 
+  end if 
+  
+  allocate(flux_up(    block_size, nlay+1, nblocks), &
+           flux_dn(    block_size, nlay+1, nblocks))
+  allocate(lay_src(    block_size, nlay,   ngpt), &
+           lev_src_inc(block_size, nlay,   ngpt), &
+           lev_src_dec(block_size, nlay,   ngpt), &
+           sfc_src(    block_size,         ngpt))
   call stop_on_err(optical_props%init_1scl(block_size, nlay, ngpt))
 
   !
