@@ -107,7 +107,6 @@ program rrtmgp_rfmip_lw
            lev_src_dec(block_size, nlay,   ngpt), &
            sfc_src(    block_size,         ngpt))
   call stop_on_err(optical_props%init_1scl(block_size, nlay, ngpt))
-
   !
   ! Loop over blocks -- use OpenMP?
   !   Would need private copies of source arrays, optical props, fluxes type
@@ -128,14 +127,13 @@ program rrtmgp_rfmip_lw
 
     fluxes%flux_up => flux_up(:,:,b)
     fluxes%flux_dn => flux_dn(:,:,b)
-
 	call stop_on_err(rte_lw(optical_props,   &
 							   top_at_1,        &
 							   k_dist,          &
 							   lay_src,         &
 							   lev_src_inc,     &
 							   lev_src_dec,     &
-							   spread(sfc_emis(:,b), 2, ncopies = ngpt), &
+							   spread(sfc_emis(:,b), 1, ncopies = k_dist%get_nband()), &
 							   sfc_src,         &
 							   fluxes))
   end do
