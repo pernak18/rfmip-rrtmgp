@@ -4,8 +4,8 @@ include $(BUILD_DIR)/Makefile.conf
 include $(BUILD_DIR)/Makefile.rules
 
 # Override default rules
-# %: %.o
-# 	$(ECOMPILE) -o ../$@ $^ $(LDFLAGS) $(LIBS)
+%: %.o
+	$(ECOMPILE) -o $@ $^ $(LDFLAGS) $(LIBS)
 %.o: %.f
 	$(FC) $(F77FLAGS) $(FCINCLUDE) -c  $<
 
@@ -21,6 +21,8 @@ FCINCLUDE += -I$(BUILD_DIR)
 #
 # Extra sources -- extensions to RRTMGP classes, shared infrastructure, local sources
 #
+all: rrtmgp_rfmip_lw
+
 ADDITIONS = mo_rfmip_io.o mo_load_coefficients.o
 
 F77FLAGS += -O2

@@ -40,17 +40,17 @@ contains
                                intent(  out) :: kdist_gas_names
     ! ---------------------------
     integer :: ncid, varid
-    character(len=8), parameter :: varName = "gas_names" 
+    character(len=9), parameter :: varName = "gas_names" 
     ! ---------------------------
     if(nf90_open(trim(fileName), NF90_NOWRITE, ncid) /= NF90_NOERR) &
-      call stop_on_err("read_kdist_gas_names: can't find file " // trim(fileName))
+      call stop_on_err("read_kdist_gas_names: can't open file " // trim(fileName))
 
     allocate(kdist_gas_names(get_dim_length(ncid, 'absorber')))
     
     if(nf90_inq_varid(ncid, trim(varName), varid) /= NF90_NOERR) &
-      call stop_on_err("read_kdist_gas_names: can't find variable" // trim(varName))
+      call stop_on_err("read_kdist_gas_names: can't find variable " // trim(varName))
     if(nf90_get_var(ncid, varid, kdist_gas_names)  /= NF90_NOERR) &
-      call stop_on_err("read_kdist_gas_names: can't read variable" // trim(varName))
+      call stop_on_err("read_kdist_gas_names: can't read variable " // trim(varName))
     
     ncid = nf90_close(ncid)
   end subroutine read_kdist_gas_names
@@ -83,7 +83,8 @@ contains
                                 intent(  out) :: p_lay, p_lev, t_lay, t_lev
     ! ---------------------------
     integer :: ncid
-    integer :: nblocks
+    integer :: b, nblocks
+    real(wp), dimension(:,:,:), allocatable :: temp3d 
     ! ---------------------------
     if(any([ncol_l, nlay_l, nexp_l]  == 0)) call stop_on_err("read_and_block_pt: Haven't read problem size yet.")
     if(mod(ncol_l*nexp_l, blocksize) /= 0 ) call stop_on_err("read_and_block_pt: number of columns doesn't fit evenly into blocks.")
@@ -91,18 +92,38 @@ contains
     !
     ! Check that output arrays are sized correctly : blocksize, nlay, (ncol * nexp)/blocksize
     !
-
+    
     if(nf90_open(trim(fileName), NF90_NOWRITE, ncid) /= NF90_NOERR) &
       call stop_on_err("read_and_block_pt: can't find file " // trim(fileName))
 
-    p_lay = reshape(read_field(ncid, "press_layer", ncol_l, nlay_l,   nexp_l), &
-                    shape = [blocksize, nblocks, nlay_l], order = [1, 3, 2])
-    t_lay = reshape(read_field(ncid, "temp_layer",  ncol_l, nlay_l,   nexp_l), &
-                    shape = [blocksize, nblocks, nlay_l], order = [1, 3, 2])
-    p_lay = reshape(read_field(ncid, "press_level", ncol_l, nlay_l+1, nexp_l), &
-                    shape = [blocksize, nblocks, nlay_l], order = [1, 3, 2])
-    t_lay = reshape(read_field(ncid, "temp_level",  ncol_l, nlay_l+1, nexp_l), &
-                    shape = [blocksize, nblocks, nlay_l], order = [1, 3, 2])
+    allocate(p_lay(blocksize, nlay_l,   nblocks), t_lay(blocksize, nlay_l,   nblocks), &  
+             p_lev(blocksize, nlay_l+1, nblocks), t_lev(blocksize, nlay_l+1, nblocks)) 
+             
+    !
+    ! Read p, T data; reshape to suit RRTMGP dimensions
+    !
+    temp3d = reshape(read_field(ncid, "pres_layer", nlay_l,   ncol_l, nexp_l), &
+                     shape = [nlay_l, blocksize, nblocks])
+    do b = 1, nblocks
+      p_lay(:,:,b) = transpose(temp3d(:,:,b))
+    end do
+    temp3d = reshape(read_field(ncid, "temp_layer", nlay_l,   ncol_l, nexp_l), &
+                     shape = [nlay_l, blocksize, nblocks])
+    do b = 1, nblocks
+      t_lay(:,:,b) = transpose(temp3d(:,:,b))
+    end do
+                    
+    deallocate(temp3d) 
+    temp3d = reshape(read_field(ncid, "pres_level", nlay_l+1, ncol_l, nexp_l), &
+                    shape = [nlay_l+1, blocksize, nblocks])
+    do b = 1, nblocks
+      p_lev(:,:,b) = transpose(temp3d(:,:,b))
+    end do
+    temp3d = reshape(read_field(ncid, "temp_level", nlay_l+1, ncol_l, nexp_l), &
+                    shape = [nlay_l+1, blocksize, nblocks])
+    do b = 1, nblocks
+      t_lev(:,:,b) = transpose(temp3d(:,:,b))
+    end do
 
     ncid = nf90_close(ncid)
   end subroutine read_and_block_pt
@@ -186,24 +207,24 @@ contains
     character(len=32), dimension(10) :: &
       chem_name = ['co   ', &
                    'ch4  ', &
-          			   'o2   ', &
-          			   'n2o  ', &
-          			   'n2   ', &
-          			   'co2  ', &
-          			   'CCl4 ', &
-          			   'ch4  ', &
-          			   'CH3Br', &
-			   'CH3Cl'], &
+				   'o2   ', &
+				   'n2o  ', &
+				   'n2   ', &
+				   'co2  ', &
+				   'CCl4 ', &
+				   'ch4  ', &
+				   'CH3Br', &
+   			       'CH3Cl'], &
       desc_name = ['carbon_monoxide     ', &
                    'methane             ', &
                    'oxygen              ', &
-      			       'nitrous_oxide       ', &
-      			       'nitrogen            ', &
-      			       'carbon_dioxide      ', &
-        				   'carbon_tetrachloride', &
-        				   'methane             ', &
-        				   'methyl_bromide      ', &
-        				   'methyl_chloride     ']
+      			   'nitrous_oxide       ', &
+      			   'nitrogen            ', &
+				   'carbon_dioxide      ', &
+				   'carbon_tetrachloride', &
+				   'methane             ', &
+				   'methyl_bromide      ', &
+				   'methyl_chloride     ']
     ! ---------------------------
     if(any([ncol_l, nlay_l, nexp_l]  == 0)) &
       call stop_on_err("read_and_block_lw_bc: Haven't read problem size yet.")
@@ -222,15 +243,16 @@ contains
     !
     ! Water vapor and ozone depend on col, lay, exp: look just like other fields
     !
-    gas_conc_temp_3d = reshape(read_field(ncid, "water_vapor", ncol_l, nlay_l, nexp_l), &
-                               shape = [blocksize, nblocks, nlay_l], order = [1, 3, 2])
+    gas_conc_temp_3d = reshape(read_field(ncid, "water_vapor", nlay_l, ncol_l, nexp_l), &
+                               shape = [nlay_l, blocksize, nblocks])
     do b = 1, nblocks
-      call stop_on_err(gas_conc_array(b)%set_vmr('h2o', gas_conc_temp_3d(:,:,b)))
+      call stop_on_err(gas_conc_array(b)%set_vmr('h2o', transpose(gas_conc_temp_3d(:,:,b))))
     end do
-    gas_conc_temp_3d = reshape(read_field(ncid, "ozone", ncol_l, nlay_l, nexp_l), &
-                               shape = [blocksize, nblocks, nlay_l], order = [1, 3, 2])
+    
+    gas_conc_temp_3d = reshape(read_field(ncid, "ozone", nlay_l, ncol_l, nexp_l), &
+                               shape = [nlay_l, blocksize, nblocks])
     do b = 1, nblocks
-      call stop_on_err(gas_conc_array(b)%set_vmr('o3', gas_conc_temp_3d(:,:,b)))
+      call stop_on_err(gas_conc_array(b)%set_vmr('o3', transpose(gas_conc_temp_3d(:,:,b))))
     end do
 
     !
@@ -238,13 +260,14 @@ contains
     !
     do g = 1, size(gas_names)
       gas_name_in_file = trim(lower_case(gas_names(g)))
+      print *, trim(gas_name_in_file) 
       if(gas_name_in_file == 'h2o' .or. gas_name_in_file == 'o3') cycle
       !
       ! Use a mapping between chemical formula and name if it exists
       !
       if(string_in_array(gas_name_in_file, chem_name)) &
         gas_name_in_file = desc_name(string_loc_in_array(gas_name_in_file, chem_name))
-      gas_name_in_file = gas_name_in_file // "_GM"
+      gas_name_in_file = trim(gas_name_in_file) // "_GM"
 
       ! Read the values as a function of experiment
       gas_conc_temp_1d = read_field(ncid, gas_name_in_file, nexp_l)
