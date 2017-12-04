@@ -20,14 +20,17 @@ program rrtmgp_rfmip_lw
 
   ! ---- I/O
   use mo_rfmip_io,           only: read_size, read_and_block_pt, read_and_block_gases_ty, unblock_and_write, &
-                                   read_and_block_lw_bc
+                                   read_and_block_lw_bc, read_kdist_gas_names 
   use mo_load_coefficients,  only: load_and_init
   implicit none
   ! --------------------------------------------------
   character(len=132)         :: fileName    = 'multiple_input4MIPs_radiation_RFMIP_UColorado-RFMIP-0-4_none.nc'
   character(len=132)         :: k_dist_file = 'coefficients_lw.nc'
   logical                    :: top_at_1
-  integer                    :: ncol, nlay, nexp, ngpt, nblocks, block_size = 8
+  integer                    :: ncol, nlay, nexp, ngpt, nblocks, block_size = 4
+  character(len=32 ), & 
+            dimension(:), & 
+                 allocatable :: kdist_gas_names, gases_to_use  
   integer                    :: b
   real(wp), dimension(:,:,:), &
                  allocatable  :: p_lay, p_lev, t_lay, t_lev ! block_size, nlay, nblocks
@@ -43,17 +46,22 @@ program rrtmgp_rfmip_lw
 
   type(ty_gas_concs), dimension(:), &
                        allocatable  :: gas_conc_array
-  type(ty_gas_optics_specification)               :: k_dist
+  type(ty_gas_optics_specification) :: k_dist
   type(ty_optical_props_1scl)       :: optical_props
   type(ty_fluxes)                   :: fluxes
   ! --------------------------------------------------
   !
   ! Update file names, block size
   !
+  ! Names of gases known to the k-distribution - default is all. 
+  !
+  call read_kdist_gas_names(k_dist_file, kdist_gas_names) 
+  ! Could update for CMIP6 variants 
+  gases_to_use = kdist_gas_names
   !
   ! Need to provide variants i.e. using equivalent concentrations
   !
-  call read_and_block_gases_ty(fileName, block_size, k_dist%get_gases(), gas_conc_array)
+  call read_and_block_gases_ty(fileName, block_size, gases_to_use, gas_conc_array)
   top_at_1 = p_lay(1, 1, 1) < p_lay(1, nlay, 1)
 
   call load_and_init(k_dist, trim(k_dist_file), gas_conc_array(1))

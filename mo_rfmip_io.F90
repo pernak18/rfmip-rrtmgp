@@ -6,7 +6,7 @@ module mo_rfmip_io
   use netcdf
   implicit none
   private
-  public :: read_size, read_and_block_pt, &
+  public :: read_kdist_gas_names, read_size, read_and_block_pt, &
             read_and_block_sw_bc, read_and_block_lw_bc, read_and_block_gases_ty, &
             unblock_and_write
 
@@ -29,6 +29,31 @@ module mo_rfmip_io
 
 ! Pack so that all mus > 0 are contiguous (offline, have an upacking routine too)
 contains
+  !--------------------------------------------------------------------------------------------------------------------
+  !
+  ! This routine reads the names of the gases known to the k-distribution 
+  !   
+  !
+  subroutine read_kdist_gas_names(fileName, kdist_gas_names)
+    character(len=*),          intent(in   ) :: fileName
+    character(len=32), dimension(:), allocatable, & 
+                               intent(  out) :: kdist_gas_names
+    ! ---------------------------
+    integer :: ncid, varid
+    character(len=8), parameter :: varName = "gas_names" 
+    ! ---------------------------
+    if(nf90_open(trim(fileName), NF90_NOWRITE, ncid) /= NF90_NOERR) &
+      call stop_on_err("read_kdist_gas_names: can't find file " // trim(fileName))
+
+    allocate(kdist_gas_names(get_dim_length(ncid, 'absorber')))
+    
+    if(nf90_inq_varid(ncid, trim(varName), varid) /= NF90_NOERR) &
+      call stop_on_err("read_kdist_gas_names: can't find variable" // trim(varName))
+    if(nf90_get_var(ncid, varid, kdist_gas_names)  /= NF90_NOERR) &
+      call stop_on_err("read_kdist_gas_names: can't read variable" // trim(varName))
+    
+    ncid = nf90_close(ncid)
+  end subroutine read_kdist_gas_names
   !--------------------------------------------------------------------------------------------------------------------
   subroutine read_size(fileName, ncol, nlay, nexp)
     character(len=*),          intent(in   ) :: fileName
