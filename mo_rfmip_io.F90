@@ -294,8 +294,19 @@ contains
                                 intent(in   ) :: values
     ! ---------------------------
     integer :: ncid
+    integer :: b, blocksize, nlev, nblocks
+    real(wp), dimension(:,:), allocatable :: temp2d
     ! ---------------------------
-    if(any([ncol_l, nlay_l, nexp_l]  == 0)) call stop_on_err("read_and_block_pt: Haven't read problem size yet.")
+    if(any([ncol_l, nlay_l, nexp_l]  == 0)) call stop_on_err("unblock_and_write: Haven't read problem size yet.")
+    blocksize = size(values,1)
+    nlev      = size(values,2)
+    nblocks   = size(values,3)
+    if(blocksize*nblocks /= ncol_l*nexp_l) call stop_on_err('unblock_and_write: array values has the wrong number of blocks/size')
+
+    allocate(temp2D(nlev, ncol_l*nexp_l))
+    do b = 1, size(values, 3) ! nblocks
+      temp2D(:, ((b-1)*blocksize+1):(b*blocksize)) = transpose(values(:,:,b))
+    end do
     !
     ! Check that output arrays are sized correctly : blocksize, nlay, (ncol * nexp)/blocksize
     !
@@ -303,8 +314,7 @@ contains
     if(nf90_open(trim(fileName), NF90_WRITE, ncid) /= NF90_NOERR) &
       call stop_on_err("unblock_and_write: can't find file " // trim(fileName))
     call stop_on_err(write_3d_field(ncid, varName,  &
-                                    reshape(values, &
-                                            shape = [nlay_l+1, ncol_l, nexp_l], order = [2, 1, 3])))
+                                    reshape(temp2d, shape = [nlev, ncol_l, nexp_l])))
 
     ncid = nf90_close(ncid)
   end subroutine unblock_and_write

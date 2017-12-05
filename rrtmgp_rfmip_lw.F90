@@ -114,28 +114,28 @@ program rrtmgp_rfmip_lw
   !
   do b = 1, nblocks
     call stop_on_err(k_dist%gas_optics(p_lay(:,:,b), &
-									   p_lev(:,:,b),       &
-									   t_lay(:,:,b),       &
-									   sfc_t(:  ,b),       &
-									   gas_conc_array(b),  &
-									   optical_props,      &
-									   lay_src,            &
-									   lev_src_inc,        &
-									   lev_src_dec,        &
-									   sfc_src,            &
-									   tlev = t_lev(:,:,b)))
+                  									   p_lev(:,:,b),       &
+                  									   t_lay(:,:,b),       &
+                  									   sfc_t(:  ,b),       &
+                  									   gas_conc_array(b),  &
+                  									   optical_props,      &
+                  									   lay_src,            &
+                  									   lev_src_inc,        &
+                  									   lev_src_dec,        &
+                  									   sfc_src,            &
+                  									   tlev = t_lev(:,:,b)))
 
     fluxes%flux_up => flux_up(:,:,b)
     fluxes%flux_dn => flux_dn(:,:,b)
-	call stop_on_err(rte_lw(optical_props,   &
-							   top_at_1,        &
-							   k_dist,          &
-							   lay_src,         &
-							   lev_src_inc,     &
-							   lev_src_dec,     &
-							   spread(sfc_emis(:,b), 1, ncopies = k_dist%get_nband()), &
-							   sfc_src,         &
-							   fluxes))
+	  call stop_on_err(rte_lw(optical_props,   &
+            							  top_at_1,        &
+            							  k_dist,          &
+            							  lay_src,         &
+            							  lev_src_inc,     &
+            							  lev_src_dec,     &
+            							  spread(sfc_emis(:,b), 1, ncopies = k_dist%get_nband()), &
+            							  sfc_src,         &
+            							  fluxes))
   end do
 
   call unblock_and_write('rlu_template.nc', 'rlu', flux_up)
