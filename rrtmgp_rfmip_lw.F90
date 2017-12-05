@@ -44,11 +44,15 @@ program rrtmgp_rfmip_lw
   real(wp), dimension(:,:  ), &
                  allocatable  :: sfc_src
 
+real(wp), dimension(:,:), &    ! Later we should add cfc11, cfc12, cfc22, ccl4
+                 allocatable   :: h2o_vmr, co2_vmr, o3_vmr, ch4_vmr, n2o_vmr, o2_vmr, cfc11_vmr
+
   type(ty_gas_concs), dimension(:), &
                        allocatable  :: gas_conc_array
   type(ty_gas_optics_specification) :: k_dist
   type(ty_optical_props_1scl)       :: optical_props
   type(ty_fluxes)                   :: fluxes
+  character(len=132)                :: error_msg    = ""
   ! --------------------------------------------------
   !
   ! Update file names, block size
@@ -100,6 +104,13 @@ program rrtmgp_rfmip_lw
                  = k_dist%get_press_ref_min() + epsilon(k_dist%get_press_ref_min())
   end if
 
+  allocate(h2o_vmr(block_size, nlay), &
+           co2_vmr(block_size, nlay), &
+            o3_vmr(block_size, nlay), &
+           ch4_vmr(block_size, nlay), &
+           n2o_vmr(block_size, nlay), &
+            o2_vmr(block_size, nlay), &
+           cfc11_vmr(block_size, nlay))
   allocate(flux_up(    block_size, nlay+1, nblocks), &
            flux_dn(    block_size, nlay+1, nblocks))
   allocate(lay_src(    block_size, nlay,   ngpt), &
@@ -112,7 +123,19 @@ program rrtmgp_rfmip_lw
   !   Would need private copies of source arrays, optical props, fluxes type
   !   Maybe the latter would need to be initialized inside the loop
   !
+  cfc11_vmr(:, :) = 0._wp
   do b = 1, nblocks
+    error_msg = gas_conc_array(b)%get_vmr('h2o', h2o_vmr)
+    error_msg = gas_conc_array(b)%get_vmr('co2', co2_vmr)
+    error_msg = gas_conc_array(b)%get_vmr('o3' ,  o3_vmr)
+    error_msg = gas_conc_array(b)%get_vmr('n2o', n2o_vmr)
+    error_msg = gas_conc_array(b)%get_vmr('ch4', ch4_vmr)
+    if(error_msg /= "") call stop_on_err(error_msg)
+    !
+    ! Of course you'll have to replace all the below with calls to RRTMG
+    !   For the moment I'm ignoring the gases that RRTMG has but GP doesn't have;
+    !   you'll pass the same empty array (cfc11_vmr) for all the arguments
+    !
     call stop_on_err(k_dist%gas_optics(p_lay(:,:,b), &
                   									   p_lev(:,:,b),       &
                   									   t_lay(:,:,b),       &
