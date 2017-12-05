@@ -20,7 +20,7 @@ program rrtmgp_rfmip_lw
 
   ! ---- I/O
   use mo_rfmip_io,           only: read_size, read_and_block_pt, read_and_block_gases_ty, unblock_and_write, &
-                                   read_and_block_lw_bc, read_kdist_gas_names 
+                                   read_and_block_lw_bc, read_kdist_gas_names
   use mo_load_coefficients,  only: load_and_init
   implicit none
   ! --------------------------------------------------
@@ -28,9 +28,9 @@ program rrtmgp_rfmip_lw
   character(len=132)         :: k_dist_file = 'coefficients_lw.nc'
   logical                    :: top_at_1
   integer                    :: ncol, nlay, nexp, ngpt, nblocks, block_size = 4
-  character(len=32 ), & 
-            dimension(:), & 
-                 allocatable :: kdist_gas_names, gases_to_use  
+  character(len=32 ), &
+            dimension(:), &
+                 allocatable :: kdist_gas_names, gases_to_use
   integer                    :: b
   real(wp), dimension(:,:,:), &
                  allocatable  :: p_lay, p_lev, t_lay, t_lev ! block_size, nlay, nblocks
@@ -60,46 +60,46 @@ program rrtmgp_rfmip_lw
   nblocks = (ncol*nexp)/block_size
 
   !
-  ! Names of gases known to the k-distribution - default is all. 
+  ! Names of gases known to the k-distribution - default is all.
   !
-  call read_kdist_gas_names(k_dist_file, kdist_gas_names) 
+  call read_kdist_gas_names(k_dist_file, kdist_gas_names)
   !
   ! Here could provide variants i.e. using equivalent concentrations
   !
   gases_to_use = kdist_gas_names
-  print *, "Radiation calculation uses gases " 
+  print *, "Radiation calculation uses gases "
   print *, "  ", [(trim(gases_to_use(b)) // " ", b = 1, size(gases_to_use))]
-  
+
   !
   ! Allocation on assignment within reading routines
   !
   call read_and_block_pt(   fileName, block_size, p_lay, p_lev, t_lay, t_lev)
   top_at_1 = p_lay(1, 1, 1) < p_lay(1, nlay, 1)
-  ! 
-  ! Read the gas concentrations 
+  !
+  ! Read the gas concentrations
   !
   call read_and_block_gases_ty(fileName, block_size, gases_to_use, gas_conc_array)
 
   call read_and_block_lw_bc(fileName, block_size, sfc_emis, sfc_t)
 
-  ! Read k-distribution 
+  ! Read k-distribution
   !
   call load_and_init(k_dist, trim(k_dist_file), gas_conc_array(1))
   if(.not. k_dist%is_internal_source_present()) &
     stop "rrtmgp_rfmip_lw: k-distribution file isn't LW"
   ngpt = k_dist%get_ngpt()
-  
+
   !
-  ! RRTMGP won't run with pressure less than its minimum. The top level in the RFMIP file 
-  !   is set to 10^-3 Pa. Here we pretend the layer is just a bit less deep. 
+  ! RRTMGP won't run with pressure less than its minimum. The top level in the RFMIP file
+  !   is set to 10^-3 Pa. Here we pretend the layer is just a bit less deep.
   !
-  if(top_at_1) then 
-    p_lev(:,1,:) = k_dist%get_press_ref_min() + epsilon(k_dist%get_press_ref_min()) 
-  else 
-    p_lev(:,nlay+1,:) & 
-                 = k_dist%get_press_ref_min() + epsilon(k_dist%get_press_ref_min()) 
-  end if 
-  
+  if(top_at_1) then
+    p_lev(:,1,:) = k_dist%get_press_ref_min() + epsilon(k_dist%get_press_ref_min())
+  else
+    p_lev(:,nlay+1,:) &
+                 = k_dist%get_press_ref_min() + epsilon(k_dist%get_press_ref_min())
+  end if
+
   allocate(flux_up(    block_size, nlay+1, nblocks), &
            flux_dn(    block_size, nlay+1, nblocks))
   allocate(lay_src(    block_size, nlay,   ngpt), &
@@ -138,6 +138,6 @@ program rrtmgp_rfmip_lw
 							   fluxes))
   end do
 
-  call unblock_and_write(fileName, 'rlu', flux_up)
-  call unblock_and_write(fileName, 'rld', flux_dn)
+  call unblock_and_write('rlu_template.nc', 'rlu', flux_up)
+  call unblock_and_write('rld_template.nc', 'rld', flux_dn)
 end program rrtmgp_rfmip_lw

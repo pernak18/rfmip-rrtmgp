@@ -31,27 +31,27 @@ module mo_rfmip_io
 contains
   !--------------------------------------------------------------------------------------------------------------------
   !
-  ! This routine reads the names of the gases known to the k-distribution 
-  !   
+  ! This routine reads the names of the gases known to the k-distribution
+  !
   !
   subroutine read_kdist_gas_names(fileName, kdist_gas_names)
     character(len=*),          intent(in   ) :: fileName
-    character(len=32), dimension(:), allocatable, & 
+    character(len=32), dimension(:), allocatable, &
                                intent(  out) :: kdist_gas_names
     ! ---------------------------
     integer :: ncid, varid
-    character(len=9), parameter :: varName = "gas_names" 
+    character(len=9), parameter :: varName = "gas_names"
     ! ---------------------------
     if(nf90_open(trim(fileName), NF90_NOWRITE, ncid) /= NF90_NOERR) &
       call stop_on_err("read_kdist_gas_names: can't open file " // trim(fileName))
 
     allocate(kdist_gas_names(get_dim_length(ncid, 'absorber')))
-    
+
     if(nf90_inq_varid(ncid, trim(varName), varid) /= NF90_NOERR) &
       call stop_on_err("read_kdist_gas_names: can't find variable " // trim(varName))
     if(nf90_get_var(ncid, varid, kdist_gas_names)  /= NF90_NOERR) &
       call stop_on_err("read_kdist_gas_names: can't read variable " // trim(varName))
-    
+
     ncid = nf90_close(ncid)
   end subroutine read_kdist_gas_names
   !--------------------------------------------------------------------------------------------------------------------
@@ -84,8 +84,8 @@ contains
     ! ---------------------------
     integer :: ncid
     integer :: b, nblocks
-    real(wp), dimension(:,:  ), allocatable :: temp2d 
-    real(wp), dimension(:,:,:), allocatable :: temp3d 
+    real(wp), dimension(:,:  ), allocatable :: temp2d
+    real(wp), dimension(:,:,:), allocatable :: temp3d
     ! ---------------------------
     if(any([ncol_l, nlay_l, nexp_l]  == 0)) call stop_on_err("read_and_block_pt: Haven't read problem size yet.")
     if(mod(ncol_l*nexp_l, blocksize) /= 0 ) call stop_on_err("read_and_block_pt: number of columns doesn't fit evenly into blocks.")
@@ -93,13 +93,13 @@ contains
     !
     ! Check that output arrays are sized correctly : blocksize, nlay, (ncol * nexp)/blocksize
     !
-    
+
     if(nf90_open(trim(fileName), NF90_NOWRITE, ncid) /= NF90_NOERR) &
       call stop_on_err("read_and_block_pt: can't find file " // trim(fileName))
 
-    allocate(p_lay(blocksize, nlay_l,   nblocks), t_lay(blocksize, nlay_l,   nblocks), &  
-             p_lev(blocksize, nlay_l+1, nblocks), t_lev(blocksize, nlay_l+1, nblocks)) 
-             
+    allocate(p_lay(blocksize, nlay_l,   nblocks), t_lay(blocksize, nlay_l,   nblocks), &
+             p_lev(blocksize, nlay_l+1, nblocks), t_lev(blocksize, nlay_l+1, nblocks))
+
     !
     ! Read p, T data; reshape to suit RRTMGP dimensions
     !
@@ -113,8 +113,8 @@ contains
     do b = 1, nblocks
       t_lay(:,:,b) = transpose(temp3d(:,:,b))
     end do
-                    
-    deallocate(temp3d) 
+
+    deallocate(temp3d)
     temp3d = reshape(spread(read_field(ncid, "pres_level", nlay_l+1, ncol_l),  dim = 3, ncopies = nexp_l), &
                     shape = [nlay_l+1, blocksize, nblocks])
     do b = 1, nblocks
@@ -208,24 +208,24 @@ contains
     character(len=32), dimension(10) :: &
       chem_name = ['co   ', &
                    'ch4  ', &
-				   'o2   ', &
-				   'n2o  ', &
-				   'n2   ', &
-				   'co2  ', &
-				   'CCl4 ', &
-				   'ch4  ', &
-				   'CH3Br', &
-   			       'CH3Cl'], &
+        				   'o2   ', &
+        				   'n2o  ', &
+        				   'n2   ', &
+        				   'co2  ', &
+        				   'CCl4 ', &
+        				   'ch4  ', &
+        				   'CH3Br', &
+   			           'CH3Cl'], &
       desc_name = ['carbon_monoxide     ', &
                    'methane             ', &
                    'oxygen              ', &
-      			   'nitrous_oxide       ', &
-      			   'nitrogen            ', &
-				   'carbon_dioxide      ', &
-				   'carbon_tetrachloride', &
-				   'methane             ', &
-				   'methyl_bromide      ', &
-				   'methyl_chloride     ']
+          			   'nitrous_oxide       ', &
+          			   'nitrogen            ', &
+        				   'carbon_dioxide      ', &
+        				   'carbon_tetrachloride', &
+        				   'methane             ', &
+        				   'methyl_bromide      ', &
+        				   'methyl_chloride     ']
     ! ---------------------------
     if(any([ncol_l, nlay_l, nexp_l]  == 0)) &
       call stop_on_err("read_and_block_lw_bc: Haven't read problem size yet.")
@@ -249,7 +249,7 @@ contains
     do b = 1, nblocks
       call stop_on_err(gas_conc_array(b)%set_vmr('h2o', transpose(gas_conc_temp_3d(:,:,b))))
     end do
-    
+
     gas_conc_temp_3d = reshape(read_field(ncid, "ozone", nlay_l, ncol_l, nexp_l), &
                                shape = [nlay_l, blocksize, nblocks])
     do b = 1, nblocks
@@ -294,7 +294,6 @@ contains
                                 intent(in   ) :: values
     ! ---------------------------
     integer :: ncid
-    integer :: nblocks
     ! ---------------------------
     if(any([ncol_l, nlay_l, nexp_l]  == 0)) call stop_on_err("read_and_block_pt: Haven't read problem size yet.")
     !
@@ -303,11 +302,9 @@ contains
 
     if(nf90_open(trim(fileName), NF90_WRITE, ncid) /= NF90_NOERR) &
       call stop_on_err("unblock_and_write: can't find file " // trim(fileName))
-
-    call stop_on_err(write_3d_field(ncid, varName,                      &
-                     reshape(reshape(values,                            &
-                                     shape = [ncol_l, nexp_l, nlay_l]), &
-                             shape = [ncol_l, nlay_l, nexp_l], order = [1, 3, 2])))
+    call stop_on_err(write_3d_field(ncid, varName,  &
+                                    reshape(values, &
+                                            shape = [nlay_l+1, ncol_l, nexp_l], order = [2, 1, 3])))
 
     ncid = nf90_close(ncid)
   end subroutine unblock_and_write
